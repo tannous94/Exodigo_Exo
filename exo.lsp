@@ -10,8 +10,8 @@
 (setq offsetx 0.0)
 (setq offsety 0.0)
 
+; some offsets and distances which were chosen randomly according to the eye :)
 (setq distance_in_between 120)
-
 (setq title_offsetx 70)
 (setq title_offsety 35)
 (setq bar_offset 58)
@@ -100,8 +100,6 @@
 	(setq point (getpoint "\nClick where do you want the Presa to be drawn."))
 	(setq offsetx (car point))
 	(setq offsety (cadr point))
-	;(setq offsetx (getreal "\nEnter offset x: ")) 
-	;(setq offsety (getreal "\nEnter offset y: "))
 	(setq prev_w 0.0)
 	(setq prev_h 0.0)
 	(setq prev_d 0.0)
@@ -942,7 +940,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; READ FROM CSV FILE:
 
+(setq coordinates_list '())
+(setq pits_list '())
+(setq coordinates_file "C:\\Users\\user\\Documents\\presa\\test.pnt") ; Set the path to your PNT file
 
+; IMPORTANT: make sure to save file as new CSV with ANSI encoding (if you're using hebrew, otherwise just keep it)
+; AND MOST IMPORTANTLY: open the CSV in notepad and remove the first line
+; it's also better to remove " symbol from pipe size (write 4 not 4" for example)
+(setq pits_file "C:\\Users\\user\\Documents\\presa\\test2.csv") ; Set the path to your CSV file
+
+; names of the blocks to be inserted:
 (setq pit_block_name "M5220_E_M")
 (setq pit_scale 0.025) ;this scale is picked according to the size we need
 (setq pit_rotation 0)
@@ -958,14 +965,126 @@
 (setq magof_block_name "M4609_E_M")
 (setq hydrant_block_name "M4611_E_M")
 
+(defun split_coordinates (str)
+  (setq result '())    
+  (setq len (strlen str)) ; Get the length of the string
+  (setq i 1) ; Initialize the loop counter
+  (setq start_i i)
+  
+  (while (<= i len)
+	  (setq end_i 0)
+	  (setq char (substr str i 1))
+	  (while (and (<= i len) (not (= char " ")))
+		(setq end_i (+ 1 end_i))
+		(setq i (+ 1 i))
+		(setq char (substr str i 1))
+	  )
+	  (setq word (substr str start_i end_i))
+	  (if (not (equal word ""))      ; Only add non-empty words
+		(setq result (append result (list word)))
+      )
+	  (setq i (+ 1 i))
+	  (setq start_i i)
+  )
+  (setq coordinates_list (cons result coordinates_list))
+)
+
+(defun getPitsCoordinates ()
+
+  (setq file (open coordinates_file "r")) ; Open the file for reading
+  (if file
+    (progn
+      (while (setq line (read-line file)) ; Read each line
+		(split_coordinates line)
+      )
+      (close file) ; Close the file
+    )
+    (princ "Failed to open file.") ; Error message if file can't be opened
+  )
+  (setq coordinates_list (reverse coordinates_list))
+  ;(princ coordinates_list)
+  (princ)
+)
+
+(defun split_pits (str)
+  (setq result '())    
+  (setq len (strlen str)) ; Get the length of the string
+  (setq i 1) ; Initialize the loop counter
+  (setq start_i i)
+  
+  (while (<= i len)
+	  (setq end_i 0)
+	  (setq char (substr str i 1))
+	  (while (and (<= i len) (not (= char ",")))
+		(setq end_i (+ 1 end_i))
+		(setq i (+ 1 i))
+		(setq char (substr str i 1))
+	  )
+	  (setq word (substr str start_i end_i))
+	  (if (not (equal word ""))      ; Only add non-empty words
+		(setq result (append result (list word)))
+      )
+	  (setq i (+ 1 i))
+	  (setq start_i i)
+  )
+  (setq pits_list (cons result pits_list))
+)
+
+(defun getPits ()
+
+  (setq file (open pits_file "r")) ; Open the file for reading
+  (if file
+    (progn
+      (while (setq line (read-line file)) ; Read each line
+		(split_pits line)
+      )
+      (close file) ; Close the file
+    )
+    (princ "Failed to open file.") ; Error message if file can't be opened
+  )
+  (setq pits_list (reverse pits_list))
+  ;(princ pits_list)
+  (princ)
+)
+
+(defun get_pit_number (str)
+  (setq result "")    
+  (setq len (strlen str)) ; Get the length of the string
+  (setq i 1) ; Initialize the loop counter
+  (setq start_i i)
+  
+  (while (<= i len)
+	  (setq end_i 0)
+	  (setq char (substr str i 1))
+	  (while (and (<= i len) (not (= char " ")))
+		(setq end_i (+ 1 end_i))
+		(setq i (+ 1 i))
+		(setq char (substr str i 1))
+	  )
+	  (setq word (substr str start_i end_i))
+	  (if (not (equal word ""))      ; Only add non-empty words
+		(setq result word)
+      )
+	  (setq i (+ 1 i))
+	  (setq start_i i)
+  )
+  result
+)
+
+(defun c:loadFiles ()
+	; load files into lists
+	
+	(getPitsCoordinates)
+	(getPits)
+)
+
 (defun c:asd ()
-	(setq point (getpoint "\nPick point"))
+	;(setq point (getpoint "\nPick point"))
 	
 	; Toggles off osnap mode - for best drawing
 	(setvar 'osmode 0)
 	
-	
-	(command "_INSERT" pit_block_name point pit_scale pit_scale pit_rotation)
+	;(command "_INSERT" pit_block_name point pit_scale pit_scale pit_rotation)
 	;(command "_INSERT" koltan_block_name point pit_scale pit_scale pit_rotation)
 	;(command "_INSERT" bezeq_block_name point pit_scale pit_scale pit_rotation)
 	;(command "_INSERT" closets_block_name point closet_scale closet_scale pit_rotation)
@@ -973,10 +1092,50 @@
 	;(command "_INSERT" magof_block_name point mad_scale mad_scale pit_rotation)
 	;(command "_INSERT" hydrant_block_name point mad_scale mad_scale pit_rotation)
 	
-	(setq obj (entlast))
-	(c:zz obj 1 1 11.1 150 90 90 65)
+	;(command "_INSERT" pit_block_name point pit_scale pit_scale pit_rotation)
+	
+	; this line takes the last object created (in this case the latest block we inserted)
+	;(setq obj (entlast))
+	;(c:zz obj 1 1 11.1 150 90 90 65)
+	
+	(setq first (get_pit_number (car (car pits_list))))
+	(princ (strcat first "\n"))
+	(setq num (atoi first))
+	(princ (strcat (itoa num) "\n"))
 	
 	
 	
 	(setvar 'osmode 3583)
 )
+
+
+;(defun c:asd ()
+
+	;(setq point (getpoint "\nPick point"))
+	
+	; Toggles off osnap mode - for best drawing
+	;(setvar 'osmode 0)
+	
+	;(command "_INSERT" pit_block_name point pit_scale pit_scale pit_rotation)
+	;(command "_INSERT" koltan_block_name point pit_scale pit_scale pit_rotation)
+	;(command "_INSERT" bezeq_block_name point pit_scale pit_scale pit_rotation)
+	;(command "_INSERT" closets_block_name point closet_scale closet_scale pit_rotation)
+	;(command "_INSERT" mad_block_name point mad_scale mad_scale pit_rotation)
+	;(command "_INSERT" magof_block_name point mad_scale mad_scale pit_rotation)
+	;(command "_INSERT" hydrant_block_name point mad_scale mad_scale pit_rotation)
+	
+	;(command "_INSERT" pit_block_name point pit_scale pit_scale pit_rotation)
+	
+	; this line takes the last object created (in this case the latest block we inserted)
+	;(setq obj (entlast))
+	;(c:zz obj 1 1 11.1 150 90 90 65)
+	
+	;(setq first (get_pit_number (car (car pits_list))))
+	;(princ (strcat first "\n"))
+	;(setq num (atoi first))
+	;(princ (strcat (itoa num) "\n"))
+	
+	
+	
+	;(setvar 'osmode 3583)
+;)
