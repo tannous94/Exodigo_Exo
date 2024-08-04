@@ -942,6 +942,7 @@
 
 (setq coordinates_list '())
 (setq pits_list '())
+(setq drawn_pits '())
 (setq coordinates_file "C:\\Users\\user\\Documents\\presa\\test.pnt") ; Set the path to your PNT file
 
 ; IMPORTANT: make sure to save file as new CSV with ANSI encoding (if you're using hebrew, otherwise just keep it)
@@ -953,6 +954,7 @@
 (setq pit_block_name "M5220_E_M")
 (setq pit_scale 0.025) ;this scale is picked according to the size we need
 (setq pit_rotation 0)
+(setq pit_row_min_length 6)
 
 (setq koltan_block_name "koltan_M")
 (setq bezeq_block_name "BEZEQQQ_M")
@@ -1071,6 +1073,115 @@
   result
 )
 
+(defun contains_letter (str letter)
+  (if (and (not (null str)))
+    (progn
+      (setq str (strcase str)) ; Convert to uppercase for case-insensitive comparison
+      (setq found nil)
+      (setq i 0)
+      (while (and (not found) (< i (strlen str)))
+        (if (= (substr str (+ 1 i) 1) letter)
+          (setq found t)
+        )
+        (setq i (+ 1 i))
+      )
+      found
+    )
+    nil
+  )
+)
+
+(defun get_pit_number_from_coords_file (str)
+	(if (/= (contains_letter str "-") nil)
+	(progn
+  (setq result '())    
+  (setq len (strlen str)) ; Get the length of the string
+  (setq i 1) ; Initialize the loop counter
+  (setq start_i i)
+  
+  (while (<= i len)
+	  (setq end_i 0)
+	  (setq char (substr str i 1))
+	  (while (and (<= i len) (not (= char "-")))
+		(setq end_i (+ 1 end_i))
+		(setq i (+ 1 i))
+		(setq char (substr str i 1))
+	  )
+	  (setq word (substr str start_i end_i))
+	  (if (not (equal word ""))      ; Only add non-empty words
+		(setq result (append result (list word)))
+      )
+	  (setq i (+ 1 i))
+	  (setq start_i i)
+  )
+  (car result)
+  )
+  str
+  )
+)
+
+(defun get_dims (str)
+	(if (/= (contains_letter str "X") nil)
+	(progn
+		(setq str (strcase str))
+		(setq result '())    
+		(setq len (strlen str)) ; Get the length of the string
+		(setq i 1) ; Initialize the loop counter
+		(setq start_i i)
+
+		(while (<= i len)
+		  (setq end_i 0)
+		  (setq char (substr str i 1))
+		  (while (and (<= i len) (not (= char "X")))
+			(setq end_i (+ 1 end_i))
+			(setq i (+ 1 i))
+			(setq char (substr str i 1))
+		  )
+		  (setq word (substr str start_i end_i))
+		  (if (not (equal word ""))      ; Only add non-empty words
+			(setq result (append result (list word)))
+		  )
+		  (setq i (+ 1 i))
+		  (setq start_i i)
+		)
+		result
+  )
+  (list str str)
+  )
+)
+
+(defun already_drawn(num)
+	(if (member num drawn_pits)
+		T
+		nil
+	)
+)
+
+(defun get_index_of_pit(num)
+	(setq res1 0)
+	(setq k 0)
+	(while (< k (length pits_list))
+		(progn
+		(setq pit_item (nth k pits_list))
+		(if (< pit_row_min_length (length pit_item))
+			(progn
+				(setq pit_number (itoa (atoi (get_pit_number (car pit_item)))))
+				
+				(if (/= pit_number "")
+					(progn
+						(if (= num pit_number)
+							(setq res1 k)
+						)
+					)
+				)
+			)
+		)
+		(setq k (+ 1 k))
+		)
+	)
+	res1
+)
+
 (defun c:loadFiles ()
 	; load files into lists
 	
@@ -1080,6 +1191,7 @@
 
 (defun c:asd ()
 	;(setq point (getpoint "\nPick point"))
+	(c:setOffsets)
 	
 	; Toggles off osnap mode - for best drawing
 	(setvar 'osmode 0)
@@ -1092,50 +1204,46 @@
 	;(command "_INSERT" magof_block_name point mad_scale mad_scale pit_rotation)
 	;(command "_INSERT" hydrant_block_name point mad_scale mad_scale pit_rotation)
 	
-	;(command "_INSERT" pit_block_name point pit_scale pit_scale pit_rotation)
-	
-	; this line takes the last object created (in this case the latest block we inserted)
-	;(setq obj (entlast))
-	;(c:zz obj 1 1 11.1 150 90 90 65)
-	
-	(setq first (get_pit_number (car (car pits_list))))
-	(princ (strcat first "\n"))
-	(setq num (atoi first))
-	(princ (strcat (itoa num) "\n"))
-	
-	
+	(setq ind 0)
+	(while (< ind (length coordinates_list))
+		(progn
+			(setq elem (nth ind coordinates_list))
+			(setq pit_number_pnt (get_pit_number_from_coords_file (car elem)))
+			(setq pit_coord_x (cadr elem))
+			(setq pit_coord_y (nth 2 elem))
+			(setq pit_tl (atof (nth 3 elem)))
+			(princ (strcat "\n" pit_number_pnt " " pit_coord_x " " pit_coord_y " " (rtos pit_tl) "\n"))
+				(if (= (already_drawn pit_number_pnt) nil)
+				(progn
+					(setq j (get_index_of_pit pit_number_pnt))
+					(setq pit_item (nth j pits_list))
+					(setq pit_number_ (atoi (get_pit_number (car pit_item))))
+					(setq pit_type_ 6)
+					(setq pit_w (atoi (car (get_dims (nth 2 pit_item)))))
+					(setq pit_h (atoi (cadr (get_dims (nth 2 pit_item)))))
+					(setq pit_cover (atoi (cadr (get_dims (nth 3 pit_item)))))
+					(setq pit_d (atoi (nth 4 pit_item)))
+					
+					;(princ (strcat (itoa pit_number_) " " (itoa pit_type_) " " (itoa pit_w) " " (itoa pit_h) " " (itoa pit_cover) " " (itoa pit_d) " " ))
+					;(setq pit_mark (nth 12 (car pits_list)))
+					
+					(setq point (list (atof pit_coord_x) (atof pit_coord_y)))
+					(if (= pit_number_ (atoi pit_number_pnt))
+						(progn
+						(command "_INSERT" pit_block_name point pit_scale pit_scale pit_rotation)
+						
+							; this line takes the last object created (in this case the latest block we inserted)
+						(setq obj (entlast))
+						(c:zz obj pit_number_ pit_type_ pit_tl pit_d pit_w pit_h pit_cover)
+						)
+					)
+					
+					(setq drawn_pits (cons pit_number_pnt drawn_pits))
+				)
+				)
+			(setq ind (+ 1 ind))
+		)
+	)
 	
 	(setvar 'osmode 3583)
 )
-
-
-;(defun c:asd ()
-
-	;(setq point (getpoint "\nPick point"))
-	
-	; Toggles off osnap mode - for best drawing
-	;(setvar 'osmode 0)
-	
-	;(command "_INSERT" pit_block_name point pit_scale pit_scale pit_rotation)
-	;(command "_INSERT" koltan_block_name point pit_scale pit_scale pit_rotation)
-	;(command "_INSERT" bezeq_block_name point pit_scale pit_scale pit_rotation)
-	;(command "_INSERT" closets_block_name point closet_scale closet_scale pit_rotation)
-	;(command "_INSERT" mad_block_name point mad_scale mad_scale pit_rotation)
-	;(command "_INSERT" magof_block_name point mad_scale mad_scale pit_rotation)
-	;(command "_INSERT" hydrant_block_name point mad_scale mad_scale pit_rotation)
-	
-	;(command "_INSERT" pit_block_name point pit_scale pit_scale pit_rotation)
-	
-	; this line takes the last object created (in this case the latest block we inserted)
-	;(setq obj (entlast))
-	;(c:zz obj 1 1 11.1 150 90 90 65)
-	
-	;(setq first (get_pit_number (car (car pits_list))))
-	;(princ (strcat first "\n"))
-	;(setq num (atoi first))
-	;(princ (strcat (itoa num) "\n"))
-	
-	
-	
-	;(setvar 'osmode 3583)
-;)
