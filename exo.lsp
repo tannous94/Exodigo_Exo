@@ -1193,16 +1193,13 @@
 	;(setq point (getpoint "\nPick point"))
 	(c:setOffsets)
 	
-	; Toggles off osnap mode - for best drawing
-	(setvar 'osmode 0)
-	
-	;(command "_INSERT" pit_block_name point pit_scale pit_scale pit_rotation)
-	;(command "_INSERT" koltan_block_name point pit_scale pit_scale pit_rotation)
-	;(command "_INSERT" bezeq_block_name point pit_scale pit_scale pit_rotation)
-	;(command "_INSERT" closets_block_name point closet_scale closet_scale pit_rotation)
-	;(command "_INSERT" mad_block_name point mad_scale mad_scale pit_rotation)
-	;(command "_INSERT" magof_block_name point mad_scale mad_scale pit_rotation)
-	;(command "_INSERT" hydrant_block_name point mad_scale mad_scale pit_rotation)
+	;(command "_INSERT" pit_block_name point_of_pit pit_scale pit_scale pit_rotation)
+	;(command "_INSERT" koltan_block_name point_of_pit pit_scale pit_scale pit_rotation)
+	;(command "_INSERT" bezeq_block_name point_of_pit pit_scale pit_scale pit_rotation)
+	;(command "_INSERT" closets_block_name point_of_pit closet_scale closet_scale pit_rotation)
+	;(command "_INSERT" mad_block_name point_of_pit mad_scale mad_scale pit_rotation)
+	;(command "_INSERT" magof_block_name point_of_pit mad_scale mad_scale pit_rotation)
+	;(command "_INSERT" hydrant_block_name point_of_pit mad_scale mad_scale pit_rotation)
 	
 	(setq ind 0)
 	(while (< ind (length coordinates_list))
@@ -1227,10 +1224,14 @@
 					;(princ (strcat (itoa pit_number_) " " (itoa pit_type_) " " (itoa pit_w) " " (itoa pit_h) " " (itoa pit_cover) " " (itoa pit_d) " " ))
 					;(setq pit_mark (nth 12 (car pits_list)))
 					
-					(setq point (list (atof pit_coord_x) (atof pit_coord_y)))
+					(setq point_of_pit (list (atof pit_coord_x) (atof pit_coord_y)))
 					(if (= pit_number_ (atoi pit_number_pnt))
 						(progn
-						(command "_INSERT" pit_block_name point pit_scale pit_scale pit_rotation)
+						
+						; Toggles off osnap mode - for best drawing
+						(setvar 'osmode 0)
+						(command "_INSERT" pit_block_name point_of_pit pit_scale pit_scale pit_rotation)
+						(setvar 'osmode 3583)
 						
 							; this line takes the last object created (in this case the latest block we inserted)
 						(setq obj (entlast))
@@ -1245,5 +1246,5 @@
 		)
 	)
 	
-	(setvar 'osmode 3583)
+	
 )
